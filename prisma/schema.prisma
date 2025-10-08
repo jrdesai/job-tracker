@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Resume {
+  id          String   @id @default(cuid())
+  name        String   // Original filename
+  path        String   // Local file path
+  url         String?  // Cloud storage URL (future S3)
+  size        Int      // File size in bytes
+  mimeType    String   // MIME type (e.g., application/pdf)
+  uploadedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  jobs        Job[]    // Jobs that used this resume
+  
+  @@map("resumes")
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  title       String
+  company     String
+  location    String
+  status      JobStatus @default(APPLIED)
+  appliedDate DateTime
+  notes       String?
+  salary      Int?
+  currency    String    @default("GBP")
+  jobUrl      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Interview tracking
+  interviewDate DateTime?
+  interviewNotes String?
+  
+  // Resume relation
+  resumeId    String?
+  resume      Resume?  @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+
+  @@map("jobs")
+}
+
+enum JobStatus {
+  APPLIED
+  INTERVIEW
+  OFFER
+  REJECTED
+}
