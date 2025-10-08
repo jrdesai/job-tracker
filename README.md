@@ -254,4 +254,4 @@ If you have any questions or need help, please:
 
 ---
 
-**Built with ❤️ by [Your Name]**
+**Built with ❤️ by Jigar**
