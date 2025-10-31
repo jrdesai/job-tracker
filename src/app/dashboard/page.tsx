@@ -7,9 +7,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { PlusCircle, Search, Briefcase, Calendar, CheckCircle, FileUp, Edit, Trash2 } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { PlusCircle, Search, Briefcase, Calendar, CheckCircle, FileUp } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { KanbanBoard } from '@/components/KanbanBoard'
+import { JobDetailsModal } from '@/components/JobDetailsModal'
 
 export default function Dashboard() {
   const [jobs, setJobs] = useState<Job[]>([])
@@ -19,6 +20,7 @@ export default function Dashboard() {
   const [editingJob, setEditingJob] = useState<Job | null>(null)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [viewingJob, setViewingJob] = useState<Job | null>(null)
 
   useEffect(() => {
     fetchJobs()
@@ -97,6 +99,27 @@ export default function Dashboard() {
     }
   }
 
+  const handleStatusUpdate = async (jobId: string, status: 'saved' | 'applied' | 'interview' | 'offer' | 'rejected') => {
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      })
+
+      if (response.ok) {
+        const updatedJob = await response.json()
+        setJobs(prev => prev.map(job => job.id === updatedJob.id ? updatedJob : job))
+        setFilteredJobs(prev => prev.map(job => job.id === updatedJob.id ? updatedJob : job))
+      }
+    } catch (error) {
+      console.error('Error updating job status:', error)
+      throw error
+    }
+  }
+
   const handleEditJob = (job: Job) => {
     setEditingJob(job)
     setShowForm(true)
@@ -141,6 +164,28 @@ export default function Dashboard() {
     }, {} as Record<string, number>)
   }
 
+  // Filter jobs for kanban board
+  const getFilteredJobsForKanban = () => {
+    let filtered = jobs
+
+    // Apply search filter
+    if (search.trim()) {
+      filtered = filtered.filter(job =>
+        job.title.toLowerCase().includes(search.toLowerCase()) ||
+        job.company.toLowerCase().includes(search.toLowerCase()) ||
+        job.location.toLowerCase().includes(search.toLowerCase()) ||
+        (job.notes && job.notes.toLowerCase().includes(search.toLowerCase()))
+      )
+    }
+
+    // Apply status filter
+    if (filter !== 'all') {
+      filtered = filtered.filter(job => job.status === filter.toLowerCase())
+    }
+
+    return filtered
+  }
+
   const getUpcomingInterviews = () => {
     const now = new Date()
     const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
@@ -180,21 +225,21 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading jobs...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading jobs...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="min-h-screen bg-background p-6">
       {/* Header */}
       <header className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-2 text-gray-900 dark:text-gray-100">
-          <Briefcase className="text-blue-600 dark:text-blue-400" /> Job Application Tracker
+        <h1 className="text-3xl font-bold flex items-center gap-2 text-foreground">
+          <Briefcase className="text-primary" /> Job Application Tracker
         </h1>
         <div className="flex items-center gap-3">
           <ThemeToggle />
@@ -211,123 +256,108 @@ export default function Dashboard() {
       </header>
 
       {/* Status Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-1.5 mb-3">
         <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 dark:text-blue-400 font-semibold">📋</span>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Applied</p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{statusCounts.applied || 0}</p>
-              </div>
+          <CardContent className="!p-1">
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-3xl font-bold text-foreground">{statusCounts.saved || 0}</p>
+              <p className="text-base font-semibold text-muted-foreground">Saved</p>
             </div>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center">
-                  <span className="text-yellow-600 dark:text-yellow-400 font-semibold">🎯</span>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Interview</p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{statusCounts.interview || 0}</p>
-              </div>
+          <CardContent className="!p-1">
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{statusCounts.applied || 0}</p>
+              <p className="text-base font-semibold text-muted-foreground">Applied</p>
             </div>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
-                  <span className="text-green-600 dark:text-green-400 font-semibold">🎉</span>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Offer</p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{statusCounts.offer || 0}</p>
-              </div>
+          <CardContent className="!p-1">
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{statusCounts.interview || 0}</p>
+              <p className="text-base font-semibold text-muted-foreground">Interview</p>
             </div>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
-                  <span className="text-red-600 dark:text-red-400 font-semibold">❌</span>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Rejected</p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{statusCounts.rejected || 0}</p>
-              </div>
+          <CardContent className="!p-1">
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-3xl font-bold text-green-600 dark:text-green-400">{statusCounts.offer || 0}</p>
+              <p className="text-base font-semibold text-muted-foreground">Offer</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="!p-1">
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-3xl font-bold text-red-600 dark:text-red-400">{statusCounts.rejected || 0}</p>
+              <p className="text-base font-semibold text-muted-foreground">Rejected</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Upcoming Interviews Section */}
-      {upcomingInterviews.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-            <Calendar className="text-blue-600 dark:text-blue-400" size={20} />
-            Upcoming Interviews
-          </h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {upcomingInterviews.map((job) => (
-              <motion.div
-                key={job.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Card className="hover:shadow-lg transition-shadow border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">{job.company}</h3>
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300">
-                        Interview
+      {/* Upcoming Interviews - Compact Horizontal List */}
+      <div className="mb-3">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <Calendar className="text-primary" size={14} />
+          <h3 className="text-xs font-semibold text-foreground">
+            Upcoming Interviews {upcomingInterviews.length > 0 && `(${upcomingInterviews.length})`}
+          </h3>
+        </div>
+        {upcomingInterviews.length > 0 ? (
+          <div className="flex gap-1 overflow-x-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
+            {upcomingInterviews.map((job) => {
+              const interviewDate = new Date(job.interviewDate!)
+              const now = new Date()
+              const isToday = interviewDate.toDateString() === now.toDateString()
+              const isTomorrow = interviewDate.toDateString() === new Date(now.getTime() + 24 * 60 * 60 * 1000).toDateString()
+              
+              return (
+                <div
+                  key={job.id}
+                  className="flex-shrink-0 hover:shadow-md transition-all cursor-pointer border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 min-w-[200px] rounded-lg p-2"
+                  onClick={() => setViewingJob(job)}
+                >
+                  {/* Prominent Date/Time Section */}
+                  <div className="bg-blue-100 dark:bg-blue-900/30 rounded px-2 py-1 mb-1.5">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Calendar size={12} className="text-blue-700 dark:text-blue-300 flex-shrink-0" />
+                      <span className="text-xs font-bold text-blue-900 dark:text-blue-100">
+                        {isToday ? 'TODAY' : isTomorrow ? 'TOMORROW' : interviewDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()}
+                      </span>
+                      <span className="text-xs font-bold text-blue-800 dark:text-blue-200">
+                        {interviewDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <p className="text-blue-800 dark:text-blue-200 font-medium mb-2">{job.title}</p>
-                    <div className="flex items-center text-sm text-blue-700 dark:text-blue-300 mb-2">
-                      <Calendar size={14} className="mr-1"/>
-                      {new Date(job.interviewDate!).toLocaleDateString()} at {new Date(job.interviewDate!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                    {job.interviewNotes && (
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mb-2">{job.interviewNotes}</p>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditJob(job)}
-                      className="w-full text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800"
-                    >
-                      View Details
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+                  </div>
+                  
+                  {/* Company and Title */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-xs text-blue-900 dark:text-blue-100 truncate leading-tight">
+                      {job.company}
+                    </h4>
+                    <p className="text-[10px] text-blue-800 dark:text-blue-200 truncate leading-tight mt-0.5">{job.title}</p>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-xs text-muted-foreground">No upcoming interviews in the next 7 days</p>
+        )}
+      </div>
 
       {/* Search and Filter */}
       <div className="flex gap-4 mb-6">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-2.5 text-gray-400" size={18} />
+          <Search className="absolute left-2 top-2.5 text-muted-foreground" size={18} />
           <Input
             placeholder="Search by company, title, or location..."
             value={search}
@@ -341,6 +371,7 @@ export default function Dashboard() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
+            <SelectItem value="saved">Saved</SelectItem>
             <SelectItem value="applied">Applied</SelectItem>
             <SelectItem value="interview">Interview</SelectItem>
             <SelectItem value="offer">Offer</SelectItem>
@@ -351,10 +382,10 @@ export default function Dashboard() {
 
       {/* Job Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div className="fixed inset-0 bg-black/50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-card">
             <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+              <h3 className="text-lg font-medium text-card-foreground mb-4">
                 {editingJob ? 'Edit Job' : 'Add New Job'}
               </h3>
               <JobForm
@@ -377,89 +408,28 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Jobs Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredJobs.map((job) => (
-          <motion.div
-            key={job.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="h-64"
-          >
-            <Card className="hover:shadow-lg transition-shadow h-full">
-              <CardContent className="p-4 h-full flex flex-col">
-                {/* Header with Status Tag - Fixed Height */}
-                <div className="flex justify-between items-start mb-2 h-10">
-                  <h2 className="text-lg font-semibold flex-1 pr-2 truncate text-gray-900 dark:text-gray-100">{job.company}</h2>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
-                    job.status === 'offer' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' :
-                    job.status === 'interview' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' :
-                    job.status === 'rejected' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-                  }`}>
-                    {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                  </span>
-                </div>
-                
-                {/* Job Details - Flexible Height */}
-                <div className="flex-1 space-y-1 mb-3">
-                  <p className="text-gray-600 dark:text-gray-300 font-medium truncate">{job.title}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{job.location}</p>
-                  
-                  <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                    <Calendar size={12} className="mr-1"/>
-                    {new Date(job.appliedDate).toLocaleDateString()}
-                  </div>
-                  
-                  {job.salary && (
-                    <p className="text-sm text-green-600 dark:text-green-400 font-medium">{formatSalary(job.salary, job.currency)}</p>
-                  )}
-                  
-                  {job.resume && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">📄 {job.resume.name}</p>
-                  )}
-                </div>
-                
-                {/* Action Buttons - Fixed Height */}
-                <div className="flex justify-end gap-2 h-8 items-center">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEditJob(job)}
-                    className="p-2 h-7 w-7"
-                    title="Edit job"
-                  >
-                    <Edit size={12} />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteJob(job.id)}
-                    className="p-2 h-7 w-7 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    title="Delete job"
-                  >
-                    <Trash2 size={12} />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+      {/* Kanban Board */}
+      <KanbanBoard
+        jobs={getFilteredJobsForKanban()}
+        onJobUpdate={handleStatusUpdate}
+        onEditJob={handleEditJob}
+        onDeleteJob={handleDeleteJob}
+        onViewJob={setViewingJob}
+      />
 
-      {/* Empty State */}
-      {filteredJobs.length === 0 && (
-        <div className="text-center text-gray-500 dark:text-gray-400 mt-12">
-          <CheckCircle className="mx-auto mb-2 text-gray-400 dark:text-gray-500" size={32} />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No applications found</h3>
-          <p className="text-gray-500 dark:text-gray-400">
-            {jobs.length === 0 
-              ? "Start tracking your job applications by adding your first job."
-              : "Try adjusting your search or filter criteria."
-            }
-          </p>
-        </div>
-      )}
+      {/* Job Details Modal */}
+      <JobDetailsModal
+        job={viewingJob}
+        onClose={() => setViewingJob(null)}
+        onEdit={(job) => {
+          setViewingJob(null)
+          handleEditJob(job)
+        }}
+        onDelete={(jobId) => {
+          setViewingJob(null)
+          handleDeleteJob(jobId)
+        }}
+      />
     </div>
   )
 }

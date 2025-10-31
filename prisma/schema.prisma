@@ -28,7 +28,7 @@ model Job {
   title       String
   company     String
   location    String
-  status      JobStatus @default(APPLIED)
+  status      JobStatus @default(SAVED)
   appliedDate DateTime
   notes       String?
   salary      Int?
@@ -49,6 +49,7 @@ model Job {
 }
 
 enum JobStatus {
+  SAVED
   APPLIED
   INTERVIEW
   OFFER

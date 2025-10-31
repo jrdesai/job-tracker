@@ -14,7 +14,7 @@ export default function JobForm({ onSubmit, initialData, isEditing = false }: Jo
     title: initialData?.title || '',
     company: initialData?.company || '',
     location: initialData?.location || '',
-    status: initialData?.status || 'applied',
+    status: initialData?.status || 'saved',
     appliedDate: initialData?.appliedDate ? new Date(initialData.appliedDate) : new Date(),
     notes: initialData?.notes || '',
     salary: initialData?.salary || undefined,
@@ -48,7 +48,16 @@ export default function JobForm({ onSubmit, initialData, isEditing = false }: Jo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit(formData)
+    // Normalize job URL - add https:// if missing
+    const normalizedFormData = {
+      ...formData,
+      jobUrl: formData.jobUrl?.trim() 
+        ? (formData.jobUrl.startsWith('http://') || formData.jobUrl.startsWith('https://') 
+          ? formData.jobUrl 
+          : `https://${formData.jobUrl}`)
+        : undefined
+    }
+    onSubmit(normalizedFormData)
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -162,6 +171,7 @@ export default function JobForm({ onSubmit, initialData, isEditing = false }: Jo
           className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
         >
           <option value="applied">Applied</option>
+          <option value="saved">Saved</option>
           <option value="interview">Interview</option>
           <option value="offer">Offer</option>
           <option value="rejected">Rejected</option>
@@ -262,13 +272,17 @@ export default function JobForm({ onSubmit, initialData, isEditing = false }: Jo
           Job URL (optional)
         </label>
         <input
-          type="url"
+          type="text"
           id="jobUrl"
           name="jobUrl"
           value={formData.jobUrl}
           onChange={handleChange}
+          placeholder="https://www.linkedin.com/jobs/..."
           className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
         />
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Enter full URL (e.g., https://www.linkedin.com/jobs/view/...) or just the domain
+        </p>
       </div>
 
       {/* Resume Selection/Upload Section */}

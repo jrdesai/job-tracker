@@ -14,7 +14,7 @@ export interface Job {
   title: string
   company: string
   location: string
-  status: 'applied' | 'interview' | 'offer' | 'rejected'
+  status: 'saved' | 'applied' | 'interview' | 'offer' | 'rejected'
   appliedDate: Date
   notes?: string
   salary?: number
@@ -32,7 +32,7 @@ export interface CreateJobData {
   title: string
   company: string
   location: string
-  status: 'applied' | 'interview' | 'offer' | 'rejected'
+  status: 'saved' | 'applied' | 'interview' | 'offer' | 'rejected'
   appliedDate: Date
   notes?: string
   salary?: number
