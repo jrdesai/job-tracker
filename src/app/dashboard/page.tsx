@@ -30,10 +30,15 @@ export default function Dashboard() {
     try {
       const response = await fetch('/api/jobs')
       const data = await response.json()
-      setJobs(data)
-      setFilteredJobs(data)
+      // Ensure data is an array
+      const jobsArray = Array.isArray(data) ? data : []
+      setJobs(jobsArray)
+      setFilteredJobs(jobsArray)
     } catch (error) {
       console.error('Error fetching jobs:', error)
+      // Set empty array on error
+      setJobs([])
+      setFilteredJobs([])
     } finally {
       setIsLoading(false)
     }
@@ -136,7 +141,9 @@ export default function Dashboard() {
   }
 
   const applyFilters = (searchQuery: string, statusFilter: string) => {
-    let filtered = jobs
+    // Ensure jobs is an array
+    const jobsArray = Array.isArray(jobs) ? jobs : []
+    let filtered = jobsArray
 
     // Apply search filter
     if (searchQuery.trim()) {
@@ -157,7 +164,9 @@ export default function Dashboard() {
   }
 
   const getStatusCounts = () => {
-    return jobs.reduce((acc, job) => {
+    // Ensure jobs is an array
+    const jobsArray = Array.isArray(jobs) ? jobs : []
+    return jobsArray.reduce((acc, job) => {
       const status = job.status.toLowerCase()
       acc[status] = (acc[status] || 0) + 1
       return acc
@@ -166,7 +175,9 @@ export default function Dashboard() {
 
   // Filter jobs for kanban board
   const getFilteredJobsForKanban = () => {
-    let filtered = jobs
+    // Ensure jobs is an array
+    const jobsArray = Array.isArray(jobs) ? jobs : []
+    let filtered = jobsArray
 
     // Apply search filter
     if (search.trim()) {
@@ -190,15 +201,28 @@ export default function Dashboard() {
     const now = new Date()
     const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
     
-    return jobs.filter(job => {
-      if (job.status !== 'interview' || !job.interviewDate) {
-        return false
+    // Collect all upcoming interviews from all jobs
+    const upcomingInterviews: Array<{ job: Job; interview: any }> = []
+    
+    // Ensure jobs is an array
+    const jobsArray = Array.isArray(jobs) ? jobs : []
+    
+    jobsArray.forEach(job => {
+      // Check if interviews exists and is an array
+      if (job.interviews && Array.isArray(job.interviews) && job.interviews.length > 0) {
+        job.interviews
+          .filter(interview => interview.status === 'scheduled')
+          .forEach(interview => {
+            const interviewDate = new Date(interview.scheduledDate)
+            if (interviewDate >= now && interviewDate <= nextWeek) {
+              upcomingInterviews.push({ job, interview })
+            }
+          })
       }
-      
-      const interviewDate = new Date(job.interviewDate)
-      return interviewDate >= now && interviewDate <= nextWeek
-    }).sort((a, b) => 
-      new Date(a.interviewDate!).getTime() - new Date(b.interviewDate!).getTime()
+    })
+    
+    return upcomingInterviews.sort((a, b) => 
+      new Date(a.interview.scheduledDate).getTime() - new Date(b.interview.scheduledDate).getTime()
     )
   }
 
@@ -313,15 +337,15 @@ export default function Dashboard() {
         </div>
         {upcomingInterviews.length > 0 ? (
           <div className="flex gap-1 overflow-x-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
-            {upcomingInterviews.map((job) => {
-              const interviewDate = new Date(job.interviewDate!)
+            {upcomingInterviews.map(({ job, interview }) => {
+              const interviewDate = new Date(interview.scheduledDate)
               const now = new Date()
               const isToday = interviewDate.toDateString() === now.toDateString()
               const isTomorrow = interviewDate.toDateString() === new Date(now.getTime() + 24 * 60 * 60 * 1000).toDateString()
               
               return (
                 <div
-                  key={job.id}
+                  key={`${job.id}-${interview.scheduledDate}`}
                   className="flex-shrink-0 hover:shadow-md transition-all cursor-pointer border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 min-w-[200px] rounded-lg p-2"
                   onClick={() => setViewingJob(job)}
                 >

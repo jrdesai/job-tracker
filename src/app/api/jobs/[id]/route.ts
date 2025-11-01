@@ -16,7 +16,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         id: id
       },
       include: {
-        resume: true
+        resume: true,
+        interviews: {
+          orderBy: {
+            scheduledDate: 'asc'
+          }
+        }
       }
     })
     
@@ -25,9 +30,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
     
     // Convert status to lowercase for frontend consistency
+    // Also convert interview enum values to lowercase
     const jobWithLowercaseStatus = {
       ...job,
-      status: job.status.toLowerCase()
+      status: job.status.toLowerCase(),
+      interviews: job.interviews?.map(interview => ({
+        ...interview,
+        type: interview.type.toLowerCase() as any,
+        status: interview.status.toLowerCase() as any
+      })) || []
     }
     
     return NextResponse.json(jobWithLowercaseStatus)
@@ -57,18 +68,27 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         currency: body.currency,
         jobUrl: body.jobUrl,
         resumeId: body.resumeId,
-        interviewDate: body.interviewDate,
-        interviewNotes: body.interviewNotes,
       } as any,
       include: {
-        resume: true
+        resume: true,
+        interviews: {
+          orderBy: {
+            scheduledDate: 'asc'
+          }
+        }
       }
     })
     
     // Convert status to lowercase for frontend consistency
+    // Also convert interview enum values to lowercase
     const jobWithLowercaseStatus = {
       ...job,
-      status: job.status.toLowerCase()
+      status: job.status.toLowerCase(),
+      interviews: job.interviews?.map(interview => ({
+        ...interview,
+        type: interview.type.toLowerCase() as any,
+        status: interview.status.toLowerCase() as any
+      })) || []
     }
     
     return NextResponse.json(jobWithLowercaseStatus)

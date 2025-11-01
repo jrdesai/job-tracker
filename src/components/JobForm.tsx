@@ -21,8 +21,6 @@ export default function JobForm({ onSubmit, initialData, isEditing = false }: Jo
     currency: initialData?.currency || 'GBP',
     jobUrl: initialData?.jobUrl || '',
     resumeId: initialData?.resumeId || undefined,
-    interviewDate: initialData?.interviewDate ? new Date(initialData.interviewDate) : undefined,
-    interviewNotes: initialData?.interviewNotes || '',
   })
 
   const [isUploading, setIsUploading] = useState(false)
@@ -192,44 +190,6 @@ export default function JobForm({ onSubmit, initialData, isEditing = false }: Jo
           className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
         />
       </div>
-
-      {/* Interview Date - Only show when status is interview */}
-      {formData.status === 'interview' && (
-        <div>
-          <label htmlFor="interviewDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Interview Date
-          </label>
-          <input
-            type="datetime-local"
-            id="interviewDate"
-            name="interviewDate"
-            value={formData.interviewDate ? formData.interviewDate.toISOString().slice(0, 16) : ''}
-            onChange={(e) => setFormData(prev => ({ 
-              ...prev, 
-              interviewDate: e.target.value ? new Date(e.target.value) : undefined 
-            }))}
-            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          />
-        </div>
-      )}
-
-      {/* Interview Notes - Only show when status is interview */}
-      {formData.status === 'interview' && (
-        <div>
-          <label htmlFor="interviewNotes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Interview Notes (optional)
-          </label>
-          <textarea
-            id="interviewNotes"
-            name="interviewNotes"
-            value={formData.interviewNotes || ''}
-            onChange={handleChange}
-            rows={3}
-            placeholder="Add notes about the interview..."
-            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          />
-        </div>
-      )}
 
       <div>
         <label htmlFor="salary" className="block text-sm font-medium text-gray-700">

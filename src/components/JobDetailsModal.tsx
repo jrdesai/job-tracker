@@ -1,9 +1,12 @@
 'use client'
 
-import { Job } from '@/lib/types'
+import { useState, useEffect } from 'react'
+import { Job, Interview, CreateInterviewData, UpdateInterviewData } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Calendar, MapPin, DollarSign, FileText, ExternalLink, X, Edit, Trash2 } from 'lucide-react'
+import { InterviewList } from './InterviewList'
+import InterviewForm from './InterviewForm'
 
 interface JobDetailsModalProps {
   job: Job | null
@@ -13,6 +16,105 @@ interface JobDetailsModalProps {
 }
 
 export function JobDetailsModal({ job, onClose, onEdit, onDelete }: JobDetailsModalProps) {
+  // Ensure interviews is always an array
+  const initialInterviews = Array.isArray(job?.interviews) ? job.interviews : []
+  const [interviews, setInterviews] = useState<Interview[]>(initialInterviews)
+  const [showInterviewForm, setShowInterviewForm] = useState(false)
+  const [editingInterview, setEditingInterview] = useState<Interview | null>(null)
+
+  useEffect(() => {
+    if (job?.interviews && Array.isArray(job.interviews) && job.interviews.length > 0) {
+      setInterviews(job.interviews)
+    } else if (job) {
+      fetchInterviews(job.id)
+    }
+  }, [job])
+
+  const fetchInterviews = async (jobId: string) => {
+    try {
+      const response = await fetch(`/api/interviews?jobId=${jobId}`)
+      const data = await response.json()
+      // Ensure data is an array
+      setInterviews(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching interviews:', error)
+      setInterviews([])
+    }
+  }
+
+  const handleCreateInterview = async (interviewData: CreateInterviewData) => {
+    try {
+      const response = await fetch('/api/interviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(interviewData),
+      })
+
+      if (response.ok) {
+        const newInterview = await response.json()
+        setInterviews(prev => [...prev, newInterview])
+        setShowInterviewForm(false)
+        // Refresh job data if needed
+      }
+    } catch (error) {
+      console.error('Error creating interview:', error)
+    }
+  }
+
+  const handleUpdateInterview = async (interviewData: UpdateInterviewData) => {
+    if (!editingInterview) return
+
+    try {
+      const response = await fetch(`/api/interviews/${editingInterview.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(interviewData),
+      })
+
+      if (response.ok) {
+        const updatedInterview = await response.json()
+        setInterviews(prev => prev.map(i => i.id === updatedInterview.id ? updatedInterview : i))
+        setEditingInterview(null)
+        setShowInterviewForm(false)
+      }
+    } catch (error) {
+      console.error('Error updating interview:', error)
+    }
+  }
+
+  const handleDeleteInterview = async (interviewId: string) => {
+    if (!confirm('Are you sure you want to delete this interview?')) return
+
+    try {
+      const response = await fetch(`/api/interviews/${interviewId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        setInterviews(prev => prev.filter(i => i.id !== interviewId))
+      }
+    } catch (error) {
+      console.error('Error deleting interview:', error)
+    }
+  }
+
+  const handleStatusUpdate = async (interviewId: string, status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled' | 'no_show') => {
+    try {
+      const response = await fetch(`/api/interviews/${interviewId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+
+      if (response.ok) {
+        const updatedInterview = await response.json()
+        setInterviews(prev => prev.map(i => i.id === updatedInterview.id ? updatedInterview : i))
+      }
+    } catch (error) {
+      console.error('Error updating interview status:', error)
+    }
+  }
+
   if (!job) return null
 
   const formatSalary = (salary: number, currency: string) => {
@@ -108,21 +210,6 @@ export function JobDetailsModal({ job, onClose, onEdit, onDelete }: JobDetailsMo
               </div>
             )}
 
-            {/* Interview Date */}
-            {job.interviewDate && (
-              <div className="flex items-center gap-2">
-                <Calendar size={16} className="text-blue-600 dark:text-blue-500" />
-                <span className="text-sm text-foreground">
-                  Interview: {new Date(job.interviewDate).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </span>
-              </div>
-            )}
 
             {/* Resume */}
             {job.resume && (
@@ -149,15 +236,6 @@ export function JobDetailsModal({ job, onClose, onEdit, onDelete }: JobDetailsMo
             </div>
           )}
 
-          {/* Interview Notes */}
-          {job.interviewNotes && (
-            <div className="mb-4">
-              <span className="text-sm font-medium text-muted-foreground block mb-2">Interview Notes:</span>
-              <p className="text-sm text-foreground whitespace-pre-wrap bg-muted p-3 rounded-md">
-                {job.interviewNotes}
-              </p>
-            </div>
-          )}
 
           {/* Notes */}
           {job.notes && (
@@ -168,6 +246,36 @@ export function JobDetailsModal({ job, onClose, onEdit, onDelete }: JobDetailsMo
               </p>
             </div>
           )}
+
+          {/* Interviews Section */}
+          <div className="mb-6">
+            {showInterviewForm ? (
+              <div className="bg-muted p-4 rounded-md">
+                <InterviewForm
+                  onSubmit={editingInterview ? handleUpdateInterview : handleCreateInterview}
+                  initialData={editingInterview || undefined}
+                  isEditing={!!editingInterview}
+                  jobId={job.id}
+                  onCancel={() => {
+                    setShowInterviewForm(false)
+                    setEditingInterview(null)
+                  }}
+                />
+              </div>
+            ) : (
+              <InterviewList
+                interviews={interviews}
+                jobId={job.id}
+                onAddInterview={() => setShowInterviewForm(true)}
+                onEditInterview={(interview) => {
+                  setEditingInterview(interview)
+                  setShowInterviewForm(true)
+                }}
+                onDeleteInterview={handleDeleteInterview}
+                onStatusUpdate={handleStatusUpdate}
+              />
+            )}
+          </div>
 
           {/* Actions */}
           <div className="flex gap-3 justify-end pt-4 border-t">

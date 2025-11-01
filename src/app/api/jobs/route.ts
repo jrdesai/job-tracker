@@ -6,7 +6,12 @@ export async function GET() {
   try {
     const jobs = await prisma.job.findMany({
       include: {
-        resume: true
+        resume: true,
+        interviews: {
+          orderBy: {
+            scheduledDate: 'asc'
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc'
@@ -14,15 +19,26 @@ export async function GET() {
     })
     
     // Convert status to lowercase for frontend consistency
+    // Also convert interview enum values to lowercase
     const jobsWithLowercaseStatus = jobs.map(job => ({
       ...job,
-      status: job.status.toLowerCase()
+      status: job.status.toLowerCase(),
+      interviews: (job.interviews && Array.isArray(job.interviews)) ? job.interviews.map(interview => ({
+        ...interview,
+        type: interview.type.toLowerCase() as any,
+        status: interview.status.toLowerCase() as any
+      })) : []
     }))
     
     return NextResponse.json(jobsWithLowercaseStatus)
   } catch (error) {
     console.error('Error fetching jobs:', error)
-    return NextResponse.json({ error: 'Failed to fetch jobs' }, { status: 500 })
+    // Return error details for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ 
+      error: 'Failed to fetch jobs',
+      details: errorMessage 
+    }, { status: 500 })
   }
 }
 
@@ -42,18 +58,27 @@ export async function POST(request: NextRequest) {
         currency: body.currency,
         jobUrl: body.jobUrl,
         resumeId: body.resumeId,
-        interviewDate: body.interviewDate,
-        interviewNotes: body.interviewNotes,
       },
       include: {
-        resume: true
+        resume: true,
+        interviews: {
+          orderBy: {
+            scheduledDate: 'asc'
+          }
+        }
       }
     })
     
     // Convert status to lowercase for frontend consistency
+    // Also convert interview enum values to lowercase
     const jobWithLowercaseStatus = {
       ...job,
-      status: job.status.toLowerCase()
+      status: job.status.toLowerCase(),
+      interviews: job.interviews?.map(interview => ({
+        ...interview,
+        type: interview.type.toLowerCase() as any,
+        status: interview.status.toLowerCase() as any
+      })) || []
     }
     
     return NextResponse.json(jobWithLowercaseStatus, { status: 201 })

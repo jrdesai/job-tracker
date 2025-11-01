@@ -9,6 +9,69 @@ export interface Resume {
   updatedAt: Date
 }
 
+export type InterviewType = 
+  | 'phone_screen' 
+  | 'technical' 
+  | 'behavioral' 
+  | 'final_round' 
+  | 'on_site' 
+  | 'video' 
+  | 'assessment' 
+  | 'other'
+
+export type InterviewStatus = 
+  | 'scheduled' 
+  | 'completed' 
+  | 'cancelled' 
+  | 'rescheduled' 
+  | 'no_show'
+
+export interface Interview {
+  id: string
+  jobId: string
+  type: InterviewType
+  status: InterviewStatus
+  scheduledDate: Date
+  duration?: number
+  location?: string
+  interviewerName?: string
+  interviewerEmail?: string
+  interviewerPhone?: string
+  notes?: string
+  feedback?: string
+  rating?: number
+  outcome?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface CreateInterviewData {
+  jobId: string
+  type: InterviewType
+  scheduledDate: Date
+  duration?: number
+  location?: string
+  interviewerName?: string
+  interviewerEmail?: string
+  interviewerPhone?: string
+  notes?: string
+}
+
+export interface UpdateInterviewData {
+  type?: InterviewType
+  status?: InterviewStatus
+  scheduledDate?: Date
+  duration?: number
+  location?: string
+  interviewerName?: string
+  interviewerEmail?: string
+  interviewerPhone?: string
+  notes?: string
+  feedback?: string
+  rating?: number
+  outcome?: string
+}
+
 export interface Job {
   id: string
   title: string
@@ -24,8 +87,7 @@ export interface Job {
   updatedAt: Date
   resumeId?: string
   resume?: Resume
-  interviewDate?: Date
-  interviewNotes?: string
+  interviews?: Interview[]
 }
 
 export interface CreateJobData {
@@ -39,8 +101,6 @@ export interface CreateJobData {
   currency: string
   jobUrl?: string
   resumeId?: string
-  interviewDate?: Date
-  interviewNotes?: string
 }
 
 export interface UpdateJobData {
@@ -54,8 +114,6 @@ export interface UpdateJobData {
   currency?: string
   jobUrl?: string
   resumeId?: string
-  interviewDate?: Date
-  interviewNotes?: string
 }
 
 export interface CreateResumeData {

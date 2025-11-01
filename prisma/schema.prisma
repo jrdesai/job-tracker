@@ -23,6 +23,33 @@ model Resume {
   @@map("resumes")
 }
 
+enum JobStatus {
+  SAVED
+  APPLIED
+  INTERVIEW
+  OFFER
+  REJECTED
+}
+
+enum InterviewType {
+  PHONE_SCREEN
+  TECHNICAL
+  BEHAVIORAL
+  FINAL_ROUND
+  ON_SITE
+  VIDEO
+  ASSESSMENT
+  OTHER
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+  NO_SHOW
+}
+
 model Job {
   id          String    @id @default(cuid())
   title       String
@@ -37,21 +64,34 @@ model Job {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
-  // Interview tracking
-  interviewDate DateTime?
-  interviewNotes String?
-  
   // Resume relation
   resumeId    String?
   resume      Resume?  @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  
+  // Interviews relation
+  interviews  Interview[]
 
   @@map("jobs")
 }
 
-enum JobStatus {
-  SAVED
-  APPLIED
-  INTERVIEW
-  OFFER
-  REJECTED
+model Interview {
+  id              String          @id @default(cuid())
+  jobId           String
+  job             Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  type            InterviewType
+  status          InterviewStatus @default(SCHEDULED)
+  scheduledDate   DateTime
+  duration        Int?            // Duration in minutes
+  location        String?         // "Zoom", "Office", "Remote", etc.
+  interviewerName String?
+  interviewerEmail String?
+  interviewerPhone String?
+  notes           String?         // Preparation notes
+  feedback        String?         // Post-interview feedback
+  rating          Int?            // 1-5 rating
+  outcome         String?         // "Positive", "Negative", "Neutral", etc.
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@map("interviews")
 }
