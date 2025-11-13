@@ -11,6 +11,7 @@ import { PlusCircle, Search, Briefcase, Calendar, CheckCircle, FileUp } from 'lu
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { KanbanBoard } from '@/components/KanbanBoard'
 import { JobDetailsModal } from '@/components/JobDetailsModal'
+import { Fireworks } from '@/components/Fireworks'
 
 export default function Dashboard() {
   const [jobs, setJobs] = useState<Job[]>([])
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [viewingJob, setViewingJob] = useState<Job | null>(null)
+  const [showFireworks, setShowFireworks] = useState(false)
 
   useEffect(() => {
     fetchJobs()
@@ -69,6 +71,9 @@ export default function Dashboard() {
     if (!editingJob) return
 
     try {
+      // Check if moving TO offer status (not already offer)
+      const isMovingToOffer = jobData.status === 'offer' && editingJob.status !== 'offer'
+
       const response = await fetch(`/api/jobs/${editingJob.id}`, {
         method: 'PUT',
         headers: {
@@ -83,6 +88,11 @@ export default function Dashboard() {
         setFilteredJobs(prev => prev.map(job => job.id === updatedJob.id ? updatedJob : job))
         setEditingJob(null)
         setShowForm(false)
+        
+        // Trigger fireworks if moving to offer
+        if (isMovingToOffer) {
+          setShowFireworks(true)
+        }
       }
     } catch (error) {
       console.error('Error updating job:', error)
@@ -106,6 +116,10 @@ export default function Dashboard() {
 
   const handleStatusUpdate = async (jobId: string, status: 'saved' | 'applied' | 'interview' | 'offer' | 'rejected') => {
     try {
+      // Check if moving TO offer status (not already offer)
+      const currentJob = jobs.find(job => job.id === jobId)
+      const isMovingToOffer = status === 'offer' && currentJob?.status !== 'offer'
+
       const response = await fetch(`/api/jobs/${jobId}`, {
         method: 'PUT',
         headers: {
@@ -118,6 +132,11 @@ export default function Dashboard() {
         const updatedJob = await response.json()
         setJobs(prev => prev.map(job => job.id === updatedJob.id ? updatedJob : job))
         setFilteredJobs(prev => prev.map(job => job.id === updatedJob.id ? updatedJob : job))
+        
+        // Trigger fireworks if moving to offer
+        if (isMovingToOffer) {
+          setShowFireworks(true)
+        }
       }
     } catch (error) {
       console.error('Error updating job status:', error)
@@ -453,6 +472,12 @@ export default function Dashboard() {
           setViewingJob(null)
           handleDeleteJob(jobId)
         }}
+      />
+
+      {/* Fireworks Animation */}
+      <Fireworks 
+        trigger={showFireworks} 
+        onComplete={() => setShowFireworks(false)} 
       />
     </div>
   )
